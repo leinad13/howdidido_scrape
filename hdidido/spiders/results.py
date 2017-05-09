@@ -1,7 +1,16 @@
+## This page helped : http://brutalsimplicity.github.io/2016/07/25/scrapy.html
+
 import scrapy
 
 from loginform import fill_login_form
 from scrapy.http import FormRequest
+
+# Function equivilent of xpath normalize-space
+def normalize_whitespace(str):
+    import re
+    str = str.strip()
+    str = re.sub(r'\s+', ' ', str)
+    return str
 
 class ResultSpider(scrapy.Spider):
     name = "results_read"
@@ -69,17 +78,20 @@ class ResultSpider(scrapy.Spider):
         outfile.write(response.body)
         '''
         person_rows = response.css('.result > tbody:nth-child(2) > tr')
-        for person_row in person_rows:
-            person_position = person_row.xpath('tr > td.text-center.hidden-xs::text').extract()
-            person = person_row.css('a::text').extract()
-            person_score = person_row.css('tr > td.text-right.text-nowrap::text').extract()
-            person_handicap = person_row.css('tr > td:nth-child(4)::text').extract()
 
-            yield {
-                'title': title,
-                'date': date,
-                'position': person_position,
-                'person': person,
-                'person_handicap': person_handicap,
-                'person_score': person_score
-            }
+        for person_row in person_rows:
+            person_position = person_row.css('tr > td.text-center.hidden-xs::text').extract_first()
+            if person_position is not None:
+                person_position = normalize_whitespace(person_position)
+                person = person_row.css('a::text').extract()
+                person_score = normalize_whitespace(person_row.css('tr > td.text-right.text-nowrap::text').extract_first())
+                person_handicap = person_row.css('tr > td:nth-child(4)::text').extract()
+
+                yield {
+                    'title': title,
+                    'date': date,
+                    'position': person_position,
+                    'person': person,
+                    'person_handicap': person_handicap,
+                    'person_score': person_score
+                }
