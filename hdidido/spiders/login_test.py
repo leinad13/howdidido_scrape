@@ -52,6 +52,10 @@ class LoginSpider(scrapy.Spider):
         # Get handicap - uses css selector to get then regex to get the value between the two rounded brackets
         handicap = response.css('#timeline > div > div.welcome.m-b-0 > span.pull-right > a').re('\(([^)]+)\)')
 
+        # Write out whole page for testing - avoids hitting the server over and over again...
+        f = open('somehtml.html', 'w')
+        f.write(response.body)
+
         yield {
             'handicap': handicap
         }
