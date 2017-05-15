@@ -1,9 +1,16 @@
 ## Read current bookings
 
+## Uses - "loginform" - https://pypi.python.org/pypi/loginform
+## Uses - "python-dateutil" - https://pypi.python.org/pypi/python-dateutil
+
 import scrapy
 
 from loginform import fill_login_form
 from scrapy.http import FormRequest
+from dateutil.parser import parse
+
+## hour_offset - used to adjust the UTC times used by webpage
+hour_offset = 1
 
 # Function equivilent of xpath normalize-space
 def normalize_whitespace(str):
@@ -19,10 +26,10 @@ class BookingSpider(scrapy.Spider):
 
     # Login URL - this page has the login form
     login_url = 'https://www.howdidido.com/Account/Login'
-    # File which contains password, is ignored by git
+
+    # Files containing username and password, should be ignored by git
     login_passwordfile = open("password.txt")
     login_userfile = open("username.txt")
-
 
     # Login User
     login_user = login_userfile.read().strip()
@@ -61,17 +68,16 @@ class BookingSpider(scrapy.Spider):
         slot_element = response.xpath('//div[@class="slot"]')
 
         for slot in slot_element:
-            time = slot.xpath('normalize-space(div[@id="timelabel"]/text())')
-            #names = slot.xpath('.//div[contains(@class, "timeslot")]').extract()
             timeslots = slot.xpath('.//div[contains(@class, "timeslot")]')
 
             for timeslot in timeslots:
                 data_slotno = timeslot.xpath('./@data-slotno')
                 data_time = timeslot.xpath('./@data-time')
+                datetimeobj = parse(data_time.extract_first())
                 data_bookingname = timeslot.xpath('./@data-bookingname')
                 yield {
-                    "time" : time.extract(),
+                    "date": datetimeobj.date(),
+                    "time" : datetimeobj.time(),
                     "data-slotno" : data_slotno.extract(),
-                    "data-time" : data_time.extract(),
                     "data-bookingname" : data_bookingname.extract()
                 }
