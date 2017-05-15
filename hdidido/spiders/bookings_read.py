@@ -50,12 +50,28 @@ class BookingSpider(scrapy.Spider):
     def parse(self, response):
         # Authentication worked - we are at bookings main page
         for booking in response.xpath('//div[@class="col-lg-4 col-md-6 col-sm-12 col-xs-12"]'):
-
             booking_link_element = booking.css('div > div > div > div > a')
-            booking_title = normalize_whitespace(booking_link_element.css('a::text').extract_first())
             booking_link = booking_link_element.css('a::attr(href)').extract_first()
 
-            yield {
-                'booking_link': booking_link,
-                'booking_title': booking_title
-            }
+            # Pass link to booking page to next scrape
+            yield scrapy.Request(response.urljoin(booking_link),callback=self.parse_booking)
+
+    def parse_booking(self, response):
+        # Should be on booking page now...
+        slot_element = response.xpath('//div[@class="slot"]')
+
+        for slot in slot_element:
+            time = slot.xpath('normalize-space(div[@id="timelabel"]/text())')
+            #names = slot.xpath('.//div[contains(@class, "timeslot")]').extract()
+            timeslots = slot.xpath('.//div[contains(@class, "timeslot")]')
+
+            for timeslot in timeslots:
+                data_slotno = timeslot.xpath('./@data-slotno')
+                data_time = timeslot.xpath('./@data-time')
+                data_bookingname = timeslot.xpath('./@data-bookingname')
+                yield {
+                    "time" : time.extract(),
+                    "data-slotno" : data_slotno.extract(),
+                    "data-time" : data_time.extract(),
+                    "data-bookingname" : data_bookingname.extract()
+                }
