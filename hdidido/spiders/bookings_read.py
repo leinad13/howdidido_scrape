@@ -1,16 +1,24 @@
-## Read current bookings
+## Read current bookings and store in local json database
 
 ## Uses - "loginform" - https://pypi.python.org/pypi/loginform
 ## Uses - "python-dateutil" - https://pypi.python.org/pypi/python-dateutil
+## Uses - "tinydb" - https://pypi.python.org/pypi/tinydb
+## Uses - "tinydb-serialization" - https://pypi.python.org/pypi/tinydb-serialization/
 
 import scrapy
 
 from loginform import fill_login_form
 from scrapy.http import FormRequest
 from dateutil.parser import parse
+#from tinydb import TinyDB, Query
 
-## hour_offset - used to adjust the UTC times used by webpage
+## Global Vars ##
+# hour_offset - used to adjust the UTC times used by webpage
 hour_offset = 1
+# db_path - path to the database for persistence
+import os
+# cwd - Current Working dir
+cwd = os.getcwd()
 
 # Function equivilent of xpath normalize-space
 def normalize_whitespace(str):
@@ -65,6 +73,12 @@ class BookingSpider(scrapy.Spider):
 
     def parse_booking(self, response):
         # Should be on booking page now...
+        # First do some db setup stuff - we need a unique id / name for the competition
+        main_title = response.xpath('//span[@class="sub-title"]/text()').extract()
+        main_title[0] = main_title[0].replace("/","_")
+        print(main_title)
+
+
         slot_element = response.xpath('//div[@class="slot"]')
 
         for slot in slot_element:
@@ -75,9 +89,3 @@ class BookingSpider(scrapy.Spider):
                 data_time = timeslot.xpath('./@data-time')
                 datetimeobj = parse(data_time.extract_first())
                 data_bookingname = timeslot.xpath('./@data-bookingname')
-                yield {
-                    "date": datetimeobj.date(),
-                    "time" : datetimeobj.time(),
-                    "data-slotno" : data_slotno.extract(),
-                    "data-bookingname" : data_bookingname.extract()
-                }
