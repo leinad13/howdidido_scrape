@@ -10,7 +10,10 @@ import scrapy
 from loginform import fill_login_form
 from scrapy.http import FormRequest
 from dateutil.parser import parse
-#from tinydb import TinyDB, Query
+from datetime import datetime
+from tinydb import TinyDB, Query
+from tinydb_serialization import Serializer
+from tinydb_serialization import SerializationMiddleware
 
 ## Global Vars ##
 # hour_offset - used to adjust the UTC times used by webpage
@@ -27,6 +30,21 @@ def normalize_whitespace(str):
     str = re.sub(r'\s+', ' ', str)
     return str
 
+# Custom Serializer to store datetime object in tinydb
+class DateTimeSerializer(Serializer):
+    OBJ_CLASS = datetime
+
+    def encode(self, obj):
+        return obj.strftime('%Y-%m-%dT%H:%M:%S')
+
+    def decode(self, s):
+        return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S')
+
+## register the custom serializer
+serialization = SerializationMiddleware()
+serialization.register_serializer(DateTimeSerializer(), 'TinyDateTime')
+
+# Main scrapy class
 class BookingSpider(scrapy.Spider):
     name = "bookings_read"
 
@@ -75,9 +93,15 @@ class BookingSpider(scrapy.Spider):
         # Should be on booking page now...
         # First do some db setup stuff - we need a unique id / name for the competition
         main_title = response.xpath('//span[@class="sub-title"]/text()').extract()
-        main_title[0] = main_title[0].replace("/","_")
-        print(main_title)
+        main_title = main_title[0].replace("/","_")
+        db_path = cwd + '\\' + main_title + '.json'
+        db_table = datetime.now().strftime('%Y_%m_%dT%H_%M_%S')
 
+        # Database object...
+        db = TinyDB(db_path, storage=serialization, default_table=db_table)
+
+        print("DB Path : " + db_path)
+        print("DB Table : " + db_table)
 
         slot_element = response.xpath('//div[@class="slot"]')
 
@@ -89,3 +113,15 @@ class BookingSpider(scrapy.Spider):
                 data_time = timeslot.xpath('./@data-time')
                 datetimeobj = parse(data_time.extract_first())
                 data_bookingname = timeslot.xpath('./@data-bookingname')
+
+                print("data_slotno : " + data_slotno.extract()[0] + "\n")
+                print("data_time : " + data_time.extract()[0]+ "\n")
+                print("datetimeobj : " + datetimeobj.strftime('%Y_%m_%dT%H_%M_%S') + "\n")
+                print("data_bookingname : " + data_bookingname.extract()[0] + "\n")
+
+                ## Insert into database (well json file...)
+                db.insert({
+                    'bookingtime': datetimeobj,
+                    'player_no': data_slotno.extract()[0],
+                    'player_name': data_bookingname.extract()[0]
+                })
