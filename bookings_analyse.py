@@ -3,11 +3,11 @@
 ## Uses - "tinydb" - https://pypi.python.org/pypi/tinydb
 ## Uses - "tinydb-serialization" - https://pypi.python.org/pypi/tinydb-serialization/
 
-
 import dominate
 from dominate.tags import *
 
 from datetime import datetime
+from dateutil.parser import parse
 from tinydb import TinyDB, Query
 from tinydb_serialization import Serializer
 from tinydb_serialization import SerializationMiddleware
@@ -38,5 +38,18 @@ for file in os.listdir(db_path):
 for db_name in db_list:
     db = TinyDB(db_path+'/'+db_name, storage=serialization) # Create db object
     tables = db.tables() # Get list of tables
+
+    comp_dates = list() # New list to store the datetime objects
+
+    print('')
     for table in tables:
-        print('Table:'+table) # Print each table name
+        if table != "_default":
+            print('Table name : '+table)
+            comp_date = parse(table.replace("_","")) # Parse the string date into a datetime object
+            comp_dates.append(comp_date)
+
+    comp_dates.sort() # Sort the date tables
+    for comp_date in comp_dates:
+        print ('Date Table : '+comp_date.strftime('%Y_%m_%dT%H_%M_%S'))
+        db_table = db.table(table)
+        print ('Rows : '+str(len(db_table)))
