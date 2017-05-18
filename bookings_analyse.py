@@ -38,13 +38,10 @@ for file in os.listdir(db_path):
 for db_name in db_list:
     db = TinyDB(db_path+'/'+db_name, storage=serialization) # Create db object
     tables = db.tables() # Get list of tables
-
     comp_dates = list() # New list to store the datetime objects
 
-    print('')
     for table in tables:
         if table != "_default":
-            print('Table name : '+table)
             comp_date = parse(table.replace("_","")) # Parse the string date into a datetime object
             comp_dates.append(comp_date)
 
