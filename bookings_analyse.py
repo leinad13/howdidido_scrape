@@ -3,6 +3,8 @@
 ## Uses - "tinydb" - https://pypi.python.org/pypi/tinydb
 ## Uses - "tinydb-serialization" - https://pypi.python.org/pypi/tinydb-serialization/
 
+### TODO - Add an hour or workout how to read the UTC to local time somehow...
+
 import dominate
 from dominate.tags import *
 
@@ -41,24 +43,29 @@ for db_name in db_list:
     comp_dates = list() # New list to store the datetime objects
 
     ## HTML Page Stuff ##
+    _html = None
+    _head = None
+    _body = None
     _html = html() # html tag / object
     _head = _html.add(head()) # head tag
-    _head.add(title('A Web Page Title')) # page title
     _body = _html.add(body()) # body tag
-    _table = _body.add(table()) # new table
-    _tbody = _table.add(tbody()) # tbody
-    _body.add(h1(db_name)) # Set heading to name of the json database
 
-    for table in tables:
-        if table != "_default":
-            comp_date = parse(table.replace("_","")) # Parse the string date into a datetime object
+    # Read the all tables in the database, each represents a snapshot of the booking sheet
+    for atable in tables:
+        if atable != "_default":
+            comp_date = parse(atable.replace("_","")) # Parse the string date into a datetime object
             comp_dates.append(comp_date)
 
     comp_dates.sort() # Sort the tables by date
 
     for comp_date in comp_dates:
         print ('Date Table : '+comp_date.strftime('%Y_%m_%dT%H_%M_%S'))
-        db_table = db.table(table)
+        snapshot_time = comp_date.strftime('%Y_%m_%dT%H_%M_%S')
+        _body.add(h2(snapshot_time)) # Set heading to name of the json database
+        _table = _body.add(table()) # new table
+        _tbody = _table.add(tbody()) # tbody
+
+        db_table = db.table(atable)
         allrows = db_table.all() # get all rows in the table
         grouped = sorted(set(map(lambda x:x['bookingtime'], allrows))) # group the rows by bookingtime - http://stackoverflow.com/questions/5695208/group-list-by-values
         newlist = [[y for y in allrows if y['bookingtime']==x] for x in grouped] # group the rows by bookingtime
