@@ -37,48 +37,35 @@ for file in os.listdir(db_path):
     if file.endswith(".json"):
         db_list.append(file)
 
-for db_name in db_list:
+for db_name in db_list: # Loop through all recorded competitions - by json file
     db = TinyDB(db_path+'/'+db_name, storage=serialization) # Create db object
     tables = db.tables() # Get list of tables
-    comp_dates = list() # New list to store the datetime objects
-
-    ## HTML Page Stuff ##
-    _html = None
-    _head = None
-    _body = None
-    _html = html() # html tag / object
-    _head = _html.add(head()) # head tag
-    _body = _html.add(body()) # body tag
+    snapshots = list() # New list to store the datetime objects
 
     # Read the all tables in the database, each represents a snapshot of the booking sheet
     for atable in tables:
         if atable != "_default":
-            comp_date = parse(atable.replace("_","")) # Parse the string date into a datetime object
-            comp_dates.append(comp_date)
+            snapshot = parse(atable.replace("_","")) # Parse the string date into a datetime object
+            snapshots.append(snapshot)
 
-    comp_dates.sort() # Sort the tables by date
+    snapshots.sort() # Sort the tables by date
+    snapshot_data = list() # List to store the grouped snapshot data
 
-    for comp_date in comp_dates:
-        print ('Date Table : '+comp_date.strftime('%Y_%m_%dT%H_%M_%S'))
-        snapshot_time = comp_date.strftime('%Y_%m_%dT%H_%M_%S')
-        _body.add(h2(snapshot_time)) # Set heading to name of the json database
-        _table = _body.add(table()) # new table
-        _tbody = _table.add(tbody()) # tbody
+    for snapshot_date in snapshots:
+        snapshot_date_str = snapshot_date.strftime('%Y_%m_%dT%H_%M_%S')
+        db_table = db.table(snapshot_date_str)
+        allrows = db_table.all()
+        group = sorted(set(map(lambda x:x['bookingtime'], allrows)))
+        groupedrows = [[y for y in allrows if y['bookingtime']==x] for x in group]
+        if len(groupedrows) > 0: # Check for 0 length results
+            snapshot_data.append(groupedrows)
 
-        db_table = db.table(atable)
-        allrows = db_table.all() # get all rows in the table
-        grouped = sorted(set(map(lambda x:x['bookingtime'], allrows))) # group the rows by bookingtime - http://stackoverflow.com/questions/5695208/group-list-by-values
-        newlist = [[y for y in allrows if y['bookingtime']==x] for x in grouped] # group the rows by bookingtime
-        for teetime in newlist:
-            with _tbody.add(tr()):
-                td(teetime[1]['bookingtime'].strftime('%H:%M')) # booking time
-                for player in teetime:
-                    td(player['player_name']) # playername
+    snapshot_count = len(snapshot_data)
+    print('Competition '+db_name.replace(".json","")+' has '+str(snapshot_count)+' snapshots')
 
-
-    output_filename = db_path+'/'+db_name.replace('.json','.html')
-    print('Outputing to '+output_filename)
-    doc = dominate.document(title='Dominate')
-    doc.add(_html)
-    output_file = open(output_filename,"w")
-    output_file.write(doc.render())
+    if snapshot_count > 1: # No point in comparing if only 1 snapshot
+        i = 0
+        for teetimes in snapshot_data:
+            if i > 0:
+                match = set(teetimes).intersection(snapshot_data[i-1])
+            i = i+1
